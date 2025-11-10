@@ -65,3 +65,71 @@ function completeRegistration() {
 }
 
 showStep(1);
+
+
+function logAction(action, data = null) {
+  try {
+    const entry = { timestamp: new Date().toISOString(), action, data };
+    let logs = JSON.parse(localStorage.getItem('registrationLogs') || '[]');
+    logs.push(entry);
+    localStorage.setItem('registrationLogs', JSON.stringify(logs));
+    console.log('[LOG]', entry);
+  } catch (e) {
+    console.error('Logging error:', e);
+  }
+}
+
+function clearLogs() {
+  try {
+    localStorage.removeItem('registrationLogs');
+    console.log('Logs cleared');
+    alert('Логи очищены');
+  } catch (e) {
+    console.error('Clear logs error:', e);
+  }
+}
+
+function restartForm() {
+  try {
+    logAction('RESTART');
+    currentStep = 1;
+    document.getElementById('registerForm').style.display = 'block';
+    document.querySelector('.buttons').style.display = 'flex';
+    document.getElementById('successMessage').classList.remove('active');
+    document.getElementById('registerForm').reset();
+    showStep(1);
+    console.log('Form restarted');
+  } catch (e) {
+    console.error('Restart error:', e);
+    logAction('ERROR', e.message);
+  }
+}
+
+const origShowStep = showStep;
+showStep = function(step) {
+  try {
+    logAction('STEP_CHANGE', { from: currentStep, to: step });
+    origShowStep(step);
+  } catch (e) {
+    console.error('showStep error:', e);
+    logAction('ERROR', e.message);
+  }
+};
+
+const origValidate = validateCurrentStep;
+validateCurrentStep = function() {
+  try {
+    const result = origValidate();
+    if (!result) logAction('VALIDATION_ERROR', { step: currentStep });
+    return result;
+  } catch (e) {
+    console.error('validateCurrentStep error:', e);
+    logAction('ERROR', e.message);
+    return false;
+  }
+};
+
+window.addEventListener('error', (event) => {
+  logAction('RUNTIME_ERROR', { message: event.message, filename: event.filename });
+  console.error('Runtime error caught:', event);
+});
